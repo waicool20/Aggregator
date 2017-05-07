@@ -71,27 +71,32 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
     private val task = object : TimerTask() {
         override fun run() {
             val currentTorrents = Files.walk(outputDir).map { it.fileName.toString() }.toList()
-            var count = 0
+            var total = 0
+            var processed = 0
             measureTimeMillis {
                 sources.parallelFlatMap({ it.torrents })
                         .filter { it.pubDate.isAfter(lastCheck) }
                         .filterNot { currentTorrents.contains(it.fileName) }
-                        .onEach { count++ }
+                        .onEach { total++ }
                         .parallelForEach({
                             when {
                                 it.isMagnet() -> {
                                     logger.debug("Converting ${it.name} from magnet to torrent")
                                     measureTimeMillis { converter.convert(it.source) }
-                                            .let { time -> logger.debug("Converting ${it.name} to torrent complete! Took $time ms") }
+                                            .let { time -> logger.debug("Converting ${it.name} to torrent complete! Took $time ms, ${total - ++processed} torrents left") }
                                 }
                                 it.isTorrent() -> {
                                     logger.debug("Downloading torrent ${it.name} directly!")
-                                    measureTimeMillis { downloader.download(it) }
-                                            .let { time -> logger.debug("Downloading torrent ${it.name} complete! Took $time ms") }
+                                    try {
+                                        measureTimeMillis { downloader.download(it) }
+                                                .let { time -> logger.debug("Downloading torrent ${it.name} complete! Took $time ms, ${total - ++processed} torrents left") }
+                                    } catch (e: Exception) {
+                                        logger.debug("Failed to fetch torrent ${it.name}, reason: ${e.message}")
+                                    }
                                 }
                             }
                         })
-            }.let { logger.debug("Processed total $count torrents in $it ms") }
+            }.let { logger.debug("Processed total $total torrents in $it ms") }
             lastCheck = ZonedDateTime.now().apply {
                 plusMinutes(scanInterval).let {
                     logger.debug("Next check at ${it.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")

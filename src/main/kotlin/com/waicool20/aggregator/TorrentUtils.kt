@@ -113,8 +113,11 @@ class TorrentDownloader(val outputDir: Path) {
     fun download(torrent: Torrent) {
         with(URL(torrent.source).openConnection()) {
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
-            outputDir.resolve(torrent.fileName).toFile()
-                    .outputStream().channel.transferFrom(Channels.newChannel(getInputStream()), 0, Long.MAX_VALUE)
+            connectTimeout = 10000 // Max 10 second before timeout
+            Channels.newChannel(getInputStream()).let {
+                // Reads channel first to prevent creation of empty file
+                outputDir.resolve(torrent.fileName).toFile().outputStream().channel.transferFrom(it, 0, Long.MAX_VALUE)
+            }
         }
     }
 }
