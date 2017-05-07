@@ -24,10 +24,14 @@ import java.net.URL
 import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
+
+data class Torrent(val name: String, val source: String) {
+    fun isMagnet() = source.startsWith("magnet", true)
+    fun isTorrent() = !isMagnet()
+}
 
 class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -91,7 +95,7 @@ class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path)
 
 class TorrentDownloader(val outputDir: Path) {
     fun download(url: URL, filename: String) {
-        with (url.openConnection()) {
+        with(url.openConnection()) {
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
             outputDir.resolve(filename).toFile().outputStream().channel.transferFrom(Channels.newChannel(getInputStream()), 0, Long.MAX_VALUE)
         }

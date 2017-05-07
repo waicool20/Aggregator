@@ -33,11 +33,6 @@ fun main(args: Array<String>) {
     aggregator.start()
 }
 
-data class Torrent(val name: String, val source: String) {
-    fun isMagnet() = source.startsWith("magnet", true)
-    fun isTorrent() = !isMagnet()
-}
-
 val sources = listOf<TorrentSource>(
         HorribleSubsRss(),
         GJMRss(),
