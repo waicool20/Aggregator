@@ -20,6 +20,9 @@ package com.waicool20.aggregator
 import com.frostwire.jlibtorrent.SessionManager
 import com.frostwire.jlibtorrent.TorrentInfo
 import org.slf4j.LoggerFactory
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.net.URL
 import java.nio.channels.Channels
 import java.nio.file.Files
@@ -28,6 +31,7 @@ import java.time.ZonedDateTime
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
+
 
 data class Torrent(val name: String, val source: String, val pubDate: ZonedDateTime) {
     fun isMagnet() = source.startsWith("magnet", true)
@@ -102,6 +106,10 @@ class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path)
 }
 
 class TorrentDownloader(val outputDir: Path) {
+    init {
+        CookieHandler.setDefault(CookieManager(null, CookiePolicy.ACCEPT_ALL))
+    }
+
     fun download(torrent: Torrent) {
         with(URL(torrent.source).openConnection()) {
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")

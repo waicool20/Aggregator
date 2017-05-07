@@ -43,3 +43,12 @@ class HorribleSubsRss : RssTorrentSource(URL("http://horriblesubs.info/rss.php?r
 class GJMRss : RssTorrentSource(URL("https://www.goodjobmedia.com/temp-rss.php"))
 class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?filter_mode=1&lang_id=1&group_id=0"))
 class TokyoToshoRss : RssTorrentSource(URL("https://www.tokyotosho.info/rss.php?filter=1"))
+class DeadFishRss : RssTorrentSource(URL("https://www.acgnx.se/rss-user-30.xml")) {
+    override val torrents by lazy {
+        rawFeed.entries.mapNotNull {
+            val date = it.publishedDate.time.div(1000)
+            val hash = it.link.replace("https://www.acgnx.se/show-", "").replace(".html", "")
+            Torrent(it.title, "https://www.acgnx.se/down.php?date=$date&hash=$hash", it.publishedDate.toInstant().atZone(ZoneId.systemDefault()))
+        }
+    }
+}
