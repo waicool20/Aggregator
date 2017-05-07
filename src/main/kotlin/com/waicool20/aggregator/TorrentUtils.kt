@@ -20,6 +20,8 @@ package com.waicool20.aggregator
 import com.frostwire.jlibtorrent.SessionManager
 import com.frostwire.jlibtorrent.TorrentInfo
 import org.slf4j.LoggerFactory
+import java.net.URL
+import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -27,24 +29,24 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
 
-class MagnetToTorrentConverter(val outputDir: Path = Paths.get("torrents")) {
+class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     init {
         initializeLibTorrent()
     }
 
-    val session = run {
-        val session = SessionManager()
-        session.start()
+    val session: SessionManager = SessionManager().apply {
+        start()
         logger.debug("Initializing new session")
         val signal = CountDownLatch(1)
         timer(period = 1000, action = {
-            session.stats().dhtNodes().let {
+            stats().dhtNodes().let {
                 if (it >= 10) {
                     logger.debug("DHT now contains 10 nodes!")
                     signal.countDown()
                     this.cancel()
+                    stateFile?.let { saveState(it) }
                 }
             }
         })
@@ -52,8 +54,8 @@ class MagnetToTorrentConverter(val outputDir: Path = Paths.get("torrents")) {
         if (!signal.await(10, TimeUnit.SECONDS)) {
             logger.debug("DHT contains less than 10 nodes after waiting for 10s, source resolving might be slow!")
         }
-        session
     }
+
 
     fun convert(magnet: String) {
         session.fetchMagnet(magnet, 30000).let {
@@ -83,6 +85,15 @@ class MagnetToTorrentConverter(val outputDir: Path = Paths.get("torrents")) {
             Runtime.getRuntime().addShutdownHook(Thread {
                 tmp.toFile().deleteRecursively()
             })
+        }
+    }
+}
+
+class TorrentDownloader(val outputDir: Path) {
+    fun download(url: URL, filename: String) {
+        with (url.openConnection()) {
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
+            outputDir.resolve(filename).toFile().outputStream().channel.transferFrom(Channels.newChannel(getInputStream()), 0, Long.MAX_VALUE)
         }
     }
 }

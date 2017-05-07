@@ -18,6 +18,7 @@
 package com.waicool20.aggregator
 
 import org.slf4j.LoggerFactory
+import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -39,42 +40,51 @@ data class Torrent(val name: String, val source: String) {
 
 val sources = listOf<TorrentSource>(
         HorribleSubsRss(),
-        GJMRss()
+        GJMRss(),
+        AniDexRss()
 )
 
-class Aggregator(val scanInterval: Long, val stateFile: Path? = null) {
+class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val outputDir: Path = Paths.get("torrents")) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val timer = Timer()
-    private val converter by lazy { MagnetToTorrentConverter() }
+    private val converter by lazy {
+        MagnetToTorrentConverter(outputDir = outputDir).apply {
+            stateFile?.let {
+                if (Files.exists(it)) this.loadState(it)
+            }
+        }
+    }
+    private val downloader by lazy { TorrentDownloader(outputDir = outputDir) }
+    private val history = mutableListOf<String>()
     var isRunning = false
         private set
 
     init {
         Runtime.getRuntime().addShutdownHook(Thread {
+            logger.debug("Saving libtorrent state")
+            stateFile?.let { converter.saveState(it) }
+            logger.debug("Saving libtorrent state complete!")
             converter.dispose()
         })
-        stateFile?.let {
-            if (Files.exists(it)) converter.loadState(it)
-        }
     }
 
     private val task = object : TimerTask() {
         override fun run() {
-            sources.flatMap { it.torrents }.parallelForEach({
+            sources.flatMap { it.torrents }.filterNot { history.contains(it.name) }.parallelForEach({
                 when {
                     it.isMagnet() -> {
                         logger.debug("Converting ${it.name} from magnet to torrent")
                         measureTimeMillis { converter.convert(it.source) }
-                                .let { time -> println("Converting ${it.name} to torrent complete! Took $time ms") }
+                                .let { time -> logger.debug("Converting ${it.name} to torrent complete! Took $time ms") }
                     }
                     it.isTorrent() -> {
-                        // TODO Download torrents
+                        logger.debug("Downloading torrent ${it.name} directly!")
+                        measureTimeMillis { downloader.download(URL(it.source), "${it.name}.torrent") }
+                                .let { time -> logger.debug("Downloading torrent ${it.name} complete! Took $time ms") }
                     }
                 }
+                history.add(it.name)
             })
-            logger.debug("Saving libtorrent state")
-            stateFile?.let { converter.saveState(it) }
-            logger.debug("Saving libtorrent state complete!")
             LocalDateTime.now().plusMinutes(scanInterval).let {
                 logger.debug("Next check at ${it.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
             }
