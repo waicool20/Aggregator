@@ -67,3 +67,4 @@ class DeadFishRss : RssTorrentSource(URL("https://www.acgnx.se/rss-user-30.xml")
             }
         }
 }
+class NyaaRss : RssTorrentSource(URL("https://nyaa.pantsu.cat/feed?c=3_5&s=3&sort=torrent_id&order=desc&max=50&q="))

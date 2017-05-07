@@ -29,7 +29,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
 
-
 data class Torrent(val name: String, val source: String, val pubDate: ZonedDateTime) {
     fun isMagnet() = source.startsWith("magnet", true)
     fun isTorrent() = !isMagnet()

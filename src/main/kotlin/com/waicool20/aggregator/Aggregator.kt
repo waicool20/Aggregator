@@ -41,7 +41,8 @@ val sources = listOf<TorrentSource>(
         GJMRss(),
         AniDexRss(),
         TokyoToshoRss(),
-        DeadFishRss()
+        DeadFishRss(),
+        NyaaRss()
 )
 
 class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val outputDir: Path = Paths.get("torrents")) {
