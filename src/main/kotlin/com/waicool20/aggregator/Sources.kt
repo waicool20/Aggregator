@@ -40,4 +40,4 @@ open class RssTorrentSource(val url: URL) : TorrentSource {
 
 class HorribleSubsRss : RssTorrentSource(URL("http://horriblesubs.info/rss.php?res=all"))
 class GJMRss : RssTorrentSource(URL("https://www.goodjobmedia.com/temp-rss.php"))
-class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?page=torrents&batch=1&raw=1&hentai=0&reencode=1&filter_mode=1&lang_id=1&group_id=0"))
+class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?filter_mode=1&lang_id=1&group_id=0"))
