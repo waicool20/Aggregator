@@ -74,7 +74,8 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
             var total = 0
             var processed = 0
             measureTimeMillis {
-                sources.parallelFlatMap({ it.torrents })
+                sources.onEach { it.refresh() }
+                        .parallelFlatMap({ it.torrents })
                         .filter { it.pubDate.isAfter(lastCheck) }
                         .filterNot { currentTorrents.contains(it.fileName) }
                         .onEach { total++ }

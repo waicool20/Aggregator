@@ -17,6 +17,7 @@
 
 package com.waicool20.aggregator
 
+import com.rometools.rome.feed.synd.SyndFeed
 import com.rometools.rome.io.SyndFeedInput
 import com.rometools.rome.io.XmlReader
 import org.slf4j.LoggerFactory
@@ -25,18 +26,30 @@ import java.time.ZoneId
 
 interface TorrentSource {
     val torrents: List<Torrent>
+    fun refresh()
 }
 
 open class RssTorrentSource(val url: URL) : TorrentSource {
     private val logger = LoggerFactory.getLogger(javaClass)
-    val rawFeed by lazy {
+
+    var lastRawFeed: SyndFeed? = null
+
+    protected fun rawFeed(): SyndFeed {
         logger.debug("Reading feed for $url")
-        SyndFeedInput().build(XmlReader(url)).apply {
+        return SyndFeedInput().build(XmlReader(url)).apply {
             logger.debug("Finished reading feed for $url")
         }
     }
 
-    override val torrents by lazy { rawFeed.entries.map { Torrent(it.title, it.link, it.publishedDate.toInstant().atZone(ZoneId.systemDefault())) } }
+    override fun refresh() {
+        lastRawFeed = rawFeed()
+    }
+
+    override val torrents: List<Torrent>
+        get() {
+            val feed = lastRawFeed ?: rawFeed().apply { lastRawFeed = this }
+            return feed.entries.map { Torrent(it.title, it.link, it.publishedDate.toInstant().atZone(ZoneId.systemDefault())) }
+        }
 }
 
 class HorribleSubsRss : RssTorrentSource(URL("http://horriblesubs.info/rss.php?res=all"))
@@ -44,11 +57,13 @@ class GJMRss : RssTorrentSource(URL("https://www.goodjobmedia.com/temp-rss.php")
 class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?filter_mode=1&lang_id=1&group_id=0"))
 class TokyoToshoRss : RssTorrentSource(URL("https://www.tokyotosho.info/rss.php?filter=1"))
 class DeadFishRss : RssTorrentSource(URL("https://www.acgnx.se/rss-user-30.xml")) {
-    override val torrents by lazy {
-        rawFeed.entries.mapNotNull {
-            val date = it.publishedDate.time.div(1000)
-            val hash = it.link.replace("https://www.acgnx.se/show-", "").replace(".html", "")
-            Torrent(it.title, "https://www.acgnx.se/down.php?date=$date&hash=$hash", it.publishedDate.toInstant().atZone(ZoneId.systemDefault()))
+    override val torrents: List<Torrent>
+        get() {
+            val feed = lastRawFeed ?: rawFeed().apply { lastRawFeed = this }
+            return feed.entries.mapNotNull {
+                val date = it.publishedDate.time.div(1000)
+                val hash = it.link.replace("https://www.acgnx.se/show-", "").replace(".html", "")
+                Torrent(it.title, "https://www.acgnx.se/down.php?date=$date&hash=$hash", it.publishedDate.toInstant().atZone(ZoneId.systemDefault()))
+            }
         }
-    }
 }
