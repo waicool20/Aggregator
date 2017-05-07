@@ -48,3 +48,20 @@ inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelMapTo(destina
     }
     return destination
 }
+
+inline fun <T, R> Iterable<T>.parallelFlatMap(crossinline transform: (T) -> Iterable<R>, pool: CoroutineContext = CommonPool): List<R> {
+    return parallelFlatMapTo(mutableListOf<R>(), transform, pool)
+}
+
+inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelFlatMapTo(destination: C, crossinline transform: (T) -> Iterable<R>, pool: CoroutineContext = CommonPool): C {
+    val jobs = mutableListOf<Deferred<Iterable<R>>>()
+    for (element in this) {
+        async(pool) {
+            transform(element)
+        }.let(jobs::add)
+    }
+    runBlocking {
+        jobs.flatMapTo(destination, { it.await() })
+    }
+    return destination
+}
