@@ -21,6 +21,7 @@ import com.rometools.rome.io.SyndFeedInput
 import com.rometools.rome.io.XmlReader
 import org.slf4j.LoggerFactory
 import java.net.URL
+import java.time.ZoneId
 
 interface TorrentSource {
     val torrents: List<Torrent>
@@ -35,7 +36,7 @@ open class RssTorrentSource(val url: URL) : TorrentSource {
         }
     }
 
-    override val torrents by lazy { rawFeed.entries.map { Torrent(it.title, it.link) } }
+    override val torrents by lazy { rawFeed.entries.map { Torrent(it.title, it.link, it.publishedDate.toInstant().atZone(ZoneId.systemDefault())) } }
 }
 
 class HorribleSubsRss : RssTorrentSource(URL("http://horriblesubs.info/rss.php?res=all"))

@@ -23,9 +23,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) {
@@ -51,7 +55,7 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
         }
     }
     private val downloader by lazy { TorrentDownloader(outputDir = outputDir) }
-    private val history = mutableListOf<String>()
+    private var lastCheck = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC).atZone(ZoneId.systemDefault())
     var isRunning = false
         private set
 
@@ -66,23 +70,32 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
 
     private val task = object : TimerTask() {
         override fun run() {
-            sources.flatMap { it.torrents }.filterNot { history.contains(it.name) }.parallelForEach({
-                when {
-                    it.isMagnet() -> {
-                        logger.debug("Converting ${it.name} from magnet to torrent")
-                        measureTimeMillis { converter.convert(it.source) }
-                                .let { time -> logger.debug("Converting ${it.name} to torrent complete! Took $time ms") }
-                    }
-                    it.isTorrent() -> {
-                        logger.debug("Downloading torrent ${it.name} directly!")
-                        measureTimeMillis { downloader.download(URL(it.source), "${it.name}.torrent") }
-                                .let { time -> logger.debug("Downloading torrent ${it.name} complete! Took $time ms") }
-                    }
+            val currentTorrents = Files.walk(outputDir).map { it.fileName.toString() }.toList()
+            var count = 0
+            measureTimeMillis {
+                sources.flatMap { it.torrents }
+                        .filter { it.pubDate.isAfter(lastCheck) }
+                        .filterNot { currentTorrents.contains(it.fileName) }
+                        .onEach { count++ }
+                        .parallelForEach({
+                            when {
+                                it.isMagnet() -> {
+                                    logger.debug("Converting ${it.name} from magnet to torrent")
+                                    measureTimeMillis { converter.convert(it.source) }
+                                            .let { time -> logger.debug("Converting ${it.name} to torrent complete! Took $time ms") }
+                                }
+                                it.isTorrent() -> {
+                                    logger.debug("Downloading torrent ${it.name} directly!")
+                                    measureTimeMillis { downloader.download(it) }
+                                            .let { time -> logger.debug("Downloading torrent ${it.name} complete! Took $time ms") }
+                                }
+                            }
+                        })
+            }.let { logger.debug("Processed total $count torrents in $it ms") }
+            lastCheck = ZonedDateTime.now().apply {
+                plusMinutes(scanInterval).let {
+                    logger.debug("Next check at ${it.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
                 }
-                history.add(it.name)
-            })
-            LocalDateTime.now().plusMinutes(scanInterval).let {
-                logger.debug("Next check at ${it.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
             }
         }
     }

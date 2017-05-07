@@ -24,20 +24,40 @@ import java.net.URL
 import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.ZonedDateTime
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
 
-data class Torrent(val name: String, val source: String) {
+data class Torrent(val name: String, val source: String, val pubDate: ZonedDateTime) {
     fun isMagnet() = source.startsWith("magnet", true)
     fun isTorrent() = !isMagnet()
+    val fileName = name
+            .replace("/", "-")
+            .replace("\\", "-")
+            .plus(".torrent")
 }
 
 class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path) {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    private val logger = LoggerFactory.getLogger(MagnetToTorrentConverter::class.java)
 
     init {
         initializeLibTorrent()
+    }
+
+    companion object Initializer {
+        private val initLogger = LoggerFactory.getLogger(Initializer::class.java)
+        private val libraryDir = Files.createTempDirectory("libjlibtorrent")
+        private fun initializeLibTorrent() {
+            val libraryFile = "libjlibtorrent${OS.libraryExtention}"
+            if (!System.getProperty("java.library.path").contains(libraryFile)) {
+                val tmpLib = libraryDir.resolve(libraryFile)
+                val arch = if (OS.is64Bit()) "x86_64" else "x86"
+                Files.copy(ClassLoader.getSystemClassLoader().getResourceAsStream("lib/$arch/${tmpLib.fileName}"), tmpLib)
+                SystemUtils.loadLibrary(tmpLib)
+                initLogger.debug("Loaded libtorrent from $tmpLib")
+            }
+        }
     }
 
     val session: SessionManager = SessionManager().apply {
@@ -62,42 +82,31 @@ class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path)
 
 
     fun convert(magnet: String) {
-        session.fetchMagnet(magnet, 30000).let {
+        session.fetchMagnet(magnet, 30000)?.let {
             val info = TorrentInfo.bdecode(it)
             Files.createDirectories(outputDir)
             Files.write(outputDir.resolve("${info.name()}.torrent"), it)
         }
     }
 
-    fun dispose() = session.stop()
+    fun dispose() {
+        if (Files.exists(libraryDir)) libraryDir.toFile().deleteRecursively()
+        session.stop()
+    }
 
     fun loadState(path: Path) {
         session.loadState(Files.readAllBytes(path))
     }
 
     fun saveState(path: Path) = Files.write(path, session.saveState())
-
-    private fun initializeLibTorrent() {
-        val libraryFile = "libjlibtorrent${OS.libraryExtention}"
-        if (!System.getProperty("java.library.path").contains(libraryFile)) {
-            val tmp = Files.createTempDirectory("libjlibtorrent")
-            val tmpLib = tmp.resolve(libraryFile)
-            val arch = if (OS.is64Bit()) "x86_64" else "x86"
-            Files.copy(ClassLoader.getSystemClassLoader().getResourceAsStream("lib/$arch/${tmpLib.fileName}"), tmpLib)
-            SystemUtils.loadLibrary(tmpLib)
-            logger.debug("Loaded libtorrent from $tmpLib")
-            Runtime.getRuntime().addShutdownHook(Thread {
-                tmp.toFile().deleteRecursively()
-            })
-        }
-    }
 }
 
 class TorrentDownloader(val outputDir: Path) {
-    fun download(url: URL, filename: String) {
-        with(url.openConnection()) {
+    fun download(torrent: Torrent) {
+        with(URL(torrent.source).openConnection()) {
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
-            outputDir.resolve(filename).toFile().outputStream().channel.transferFrom(Channels.newChannel(getInputStream()), 0, Long.MAX_VALUE)
+            outputDir.resolve(torrent.fileName).toFile()
+                    .outputStream().channel.transferFrom(Channels.newChannel(getInputStream()), 0, Long.MAX_VALUE)
         }
     }
 }
