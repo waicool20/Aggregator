@@ -65,3 +65,16 @@ inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelFlatMapTo(des
     }
     return destination
 }
+
+inline fun <T, C : Iterable<T>> C.parallelOnEach(crossinline action: (T) -> Unit, pool: CoroutineContext = CommonPool): C {
+    val jobs = mutableListOf<Deferred<Unit>>()
+    for (element in this) {
+        async(pool) {
+            action(element)
+        }.let(jobs::add)
+    }
+    runBlocking {
+        jobs.forEach { it.await() }
+    }
+    return this
+}

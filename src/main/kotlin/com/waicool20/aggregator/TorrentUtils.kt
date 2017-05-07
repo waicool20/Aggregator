@@ -20,10 +20,7 @@ package com.waicool20.aggregator
 import com.frostwire.jlibtorrent.SessionManager
 import com.frostwire.jlibtorrent.TorrentInfo
 import org.slf4j.LoggerFactory
-import java.net.CookieHandler
-import java.net.CookieManager
-import java.net.CookiePolicy
-import java.net.URL
+import java.net.*
 import java.nio.channels.Channels
 import java.nio.file.Files
 import java.nio.file.Path
@@ -106,6 +103,7 @@ class MagnetToTorrentConverter(val stateFile: Path? = null, val outputDir: Path)
 }
 
 class TorrentDownloader(val outputDir: Path) {
+    private val logger = LoggerFactory.getLogger(javaClass)
     init {
         CookieHandler.setDefault(CookieManager(null, CookiePolicy.ACCEPT_ALL))
     }
@@ -114,8 +112,7 @@ class TorrentDownloader(val outputDir: Path) {
         with(URL(torrent.source).openConnection()) {
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36")
             connectTimeout = 10000 // Max 10 second before timeout
-            Channels.newChannel(getInputStream()).let {
-                // Reads channel first to prevent creation of empty file
+            Channels.newChannel(getInputStream()).let { // Reads channel first to prevent creation of empty file
                 outputDir.resolve(torrent.fileName).toFile().outputStream().channel.transferFrom(it, 0, Long.MAX_VALUE)
             }
         }

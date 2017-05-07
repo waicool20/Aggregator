@@ -47,11 +47,11 @@ val sources = listOf<TorrentSource>(
 class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val outputDir: Path = Paths.get("torrents")) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val timer = Timer()
+    private var converterInitialized = false
     private val converter by lazy {
         MagnetToTorrentConverter(outputDir = outputDir).apply {
-            stateFile?.let {
-                if (Files.exists(it)) this.loadState(it)
-            }
+            converterInitialized = true
+            stateFile?.let { if (Files.exists(it)) this.loadState(it) }
         }
     }
     private val downloader by lazy { TorrentDownloader(outputDir = outputDir) }
@@ -61,10 +61,12 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
 
     init {
         Runtime.getRuntime().addShutdownHook(Thread {
-            logger.debug("Saving libtorrent state")
-            stateFile?.let { converter.saveState(it) }
-            logger.debug("Saving libtorrent state complete!")
-            converter.dispose()
+            if (converterInitialized) {
+                logger.debug("Saving libtorrent state")
+                stateFile?.let { converter.saveState(it) }
+                logger.debug("Saving libtorrent state complete!")
+                converter.dispose()
+            }
         })
     }
 
@@ -74,7 +76,7 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
             var total = 0
             var processed = 0
             measureTimeMillis {
-                sources.onEach { it.refresh() }
+                sources.parallelOnEach({ it.refresh() })
                         .parallelFlatMap({ it.torrents })
                         .filter { it.pubDate.isAfter(lastCheck) }
                         .filterNot { currentTorrents.contains(it.fileName) }
