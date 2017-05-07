@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/aggregator.iml" filepath="$PROJECT_DIR$/.idea/modules/aggregator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/683582162/aggregator_main.iml" filepath="$PROJECT_DIR$/.idea/modules/683582162/aggregator_main.iml" group="aggregator" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/683582162/aggregator_test.iml" filepath="$PROJECT_DIR$/.idea/modules/683582162/aggregator_test.iml" group="aggregator" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/683582162/java-aggregator.iml" filepath="$PROJECT_DIR$/.idea/modules/683582162/java-aggregator.iml" />
+    </modules>
+  </component>
+</project>
