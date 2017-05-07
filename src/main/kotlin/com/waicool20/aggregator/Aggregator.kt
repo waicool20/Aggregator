@@ -36,7 +36,8 @@ fun main(args: Array<String>) {
 val sources = listOf<TorrentSource>(
         HorribleSubsRss(),
         GJMRss(),
-        AniDexRss()
+        AniDexRss(),
+        TokyoToshoRss()
 )
 
 class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val outputDir: Path = Paths.get("torrents")) {
