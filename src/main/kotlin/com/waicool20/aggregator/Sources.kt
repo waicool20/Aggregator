@@ -64,7 +64,7 @@ class HorribleSubsRss : RssTorrentSource(URL("http://horriblesubs.info/rss.php?r
 class GJMRss : RssTorrentSource(URL("https://www.goodjobmedia.com/temp-rss.php"))
 class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?filter_mode=1&lang_id=1&group_id=0"))
 class TokyoToshoRss : RssTorrentSource(URL("https://www.tokyotosho.info/rss.php?filter=1"))
-class DeadFishRss : RssTorrentSource(URL("https://www.acgnx.se/rss-user-30.xml")) {
+class AcgnxRss : RssTorrentSource(URL("https://www.acgnx.se/rss-sort-2.xml")) {
     override val torrents: List<Torrent>
         get() {
             val feed = lastRawFeed ?: rawFeed().apply { lastRawFeed = this }

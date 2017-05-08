@@ -41,7 +41,7 @@ val sources = listOf<TorrentSource>(
         GJMRss(),
         AniDexRss(),
         TokyoToshoRss(),
-        DeadFishRss(),
+        AcgnxRss(),
         NyaaRss()
 )
 
