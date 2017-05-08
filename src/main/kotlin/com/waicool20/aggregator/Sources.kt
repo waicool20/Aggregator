@@ -34,10 +34,15 @@ open class RssTorrentSource(val url: URL) : TorrentSource {
 
     var lastRawFeed: SyndFeed? = null
 
-    protected fun rawFeed(): SyndFeed {
+    protected fun rawFeed(): SyndFeed? {
         logger.debug("Reading feed for $url")
-        return SyndFeedInput().build(XmlReader(url)).apply {
-            logger.debug("Finished reading feed for $url")
+        return try {
+            SyndFeedInput().build(XmlReader(url)).apply {
+                logger.debug("Finished reading feed for $url")
+            }
+        } catch (e: Exception) {
+            logger.debug("Could not read feed for $url, reason: ${e.message}")
+            null
         }
     }
 
@@ -48,7 +53,7 @@ open class RssTorrentSource(val url: URL) : TorrentSource {
     override val torrents: List<Torrent>
         get() {
             val feed = lastRawFeed ?: rawFeed().apply { lastRawFeed = this }
-            return feed.entries.map { Torrent(it.title, it.link, it.publishedDate.toInstant().atZone(ZoneId.systemDefault())) }
+            return feed?.entries?.map { Torrent(it.title, it.link, it.publishedDate.toInstant().atZone(ZoneId.systemDefault())) } ?: listOf<Torrent>()
         }
 }
 
@@ -60,11 +65,12 @@ class DeadFishRss : RssTorrentSource(URL("https://www.acgnx.se/rss-user-30.xml")
     override val torrents: List<Torrent>
         get() {
             val feed = lastRawFeed ?: rawFeed().apply { lastRawFeed = this }
-            return feed.entries.mapNotNull {
+            return feed?.entries?.mapNotNull {
                 val date = it.publishedDate.time.div(1000)
                 val hash = it.link.replace("https://www.acgnx.se/show-", "").replace(".html", "")
                 Torrent(it.title, "https://www.acgnx.se/down.php?date=$date&hash=$hash", it.publishedDate.toInstant().atZone(ZoneId.systemDefault()))
-            }
+            } ?: listOf<Torrent>()
         }
 }
+
 class NyaaRss : RssTorrentSource(URL("https://nyaa.pantsu.cat/feed?c=3_5&s=3&sort=torrent_id&order=desc&max=50&q="))
