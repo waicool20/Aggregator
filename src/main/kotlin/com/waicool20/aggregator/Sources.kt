@@ -37,7 +37,10 @@ open class RssTorrentSource(val url: URL) : TorrentSource {
     protected fun rawFeed(): SyndFeed? {
         logger.debug("Reading feed for $url")
         return try {
-            SyndFeedInput().build(XmlReader(url)).apply {
+            val connection = url.openConnection()
+            connection.readTimeout = 5000
+            connection.connectTimeout = 5000 // Max 5 seconds before timeout
+            SyndFeedInput().build(XmlReader(connection)).apply {
                 logger.debug("Finished reading feed for $url")
             }
         } catch (e: Exception) {
