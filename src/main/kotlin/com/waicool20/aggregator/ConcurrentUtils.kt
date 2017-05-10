@@ -20,9 +20,9 @@ package com.waicool20.aggregator
 import kotlinx.coroutines.experimental.*
 import kotlin.coroutines.experimental.CoroutineContext
 
-inline fun <T> Iterable<T>.parallelForEach(crossinline action: (T) -> Unit, pool: CoroutineContext = CommonPool): Unit {
+inline fun <T> Iterable<T>.parallelForEach(pool: CoroutineContext = CommonPool, crossinline action: (T) -> Unit): Unit {
     val jobs = mutableListOf<Job>()
-    for (element in this@parallelForEach) {
+    for (element in this) {
         launch(pool) {
             action(element)
         }.let(jobs::add)
@@ -32,11 +32,11 @@ inline fun <T> Iterable<T>.parallelForEach(crossinline action: (T) -> Unit, pool
     }
 }
 
-inline fun <T, R> Iterable<T>.parallelMap(crossinline transform: (T) -> (R), pool: CoroutineContext = CommonPool): List<R> {
-    return parallelMapTo(mutableListOf<R>(), transform, pool)
-}
+inline fun <T, R> Iterable<T>.parallelMap(pool: CoroutineContext = CommonPool, crossinline transform: (T) -> (R)): List<R> =
+        parallelMapTo(pool, mutableListOf<R>(), transform)
 
-inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelMapTo(destination: C, crossinline transform: (T) -> R, pool: CoroutineContext = CommonPool): C {
+
+inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelMapTo(pool: CoroutineContext = CommonPool, destination: C, crossinline transform: (T) -> R): C {
     val jobs = mutableListOf<Deferred<R>>()
     for (item in this@parallelMapTo) {
         async(pool) {
@@ -49,11 +49,11 @@ inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelMapTo(destina
     return destination
 }
 
-inline fun <T, R> Iterable<T>.parallelFlatMap(crossinline transform: (T) -> Iterable<R>, pool: CoroutineContext = CommonPool): List<R> {
-    return parallelFlatMapTo(mutableListOf<R>(), transform, pool)
-}
+inline fun <T, R> Iterable<T>.parallelFlatMap(pool: CoroutineContext = CommonPool, crossinline transform: (T) -> Iterable<R>): List<R> =
+        parallelFlatMapTo(pool, mutableListOf<R>(), transform)
 
-inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelFlatMapTo(destination: C, crossinline transform: (T) -> Iterable<R>, pool: CoroutineContext = CommonPool): C {
+
+inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelFlatMapTo(pool: CoroutineContext = CommonPool, destination: C, crossinline transform: (T) -> Iterable<R>): C {
     val jobs = mutableListOf<Deferred<Iterable<R>>>()
     for (element in this) {
         async(pool) {
@@ -66,7 +66,7 @@ inline fun <T, R, C : MutableCollection<in R>> Iterable<T>.parallelFlatMapTo(des
     return destination
 }
 
-inline fun <T, C : Iterable<T>> C.parallelOnEach(crossinline action: (T) -> Unit, pool: CoroutineContext = CommonPool): C {
+inline fun <T, C : Iterable<T>> C.parallelOnEach(pool: CoroutineContext = CommonPool, crossinline action: (T) -> Unit): C {
     val jobs = mutableListOf<Job>()
     for (element in this) {
         launch(pool) {

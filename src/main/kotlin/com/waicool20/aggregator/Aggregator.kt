@@ -77,12 +77,12 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
             var total = 0
             var processed = 0
             measureTimeMillis {
-                sources.parallelOnEach({ it.refresh() })
-                        .parallelFlatMap({ it.torrents })
+                sources.parallelOnEach { it.refresh() }
+                        .parallelFlatMap { it.torrents }
                         .filter { it.pubDate.isAfter(lastCheck) }
                         .filterNot { currentTorrents.contains(it.fileName) }
                         .onEach { total++ }
-                        .parallelForEach({
+                        .parallelForEach {
                             when {
                                 it.isMagnet() -> {
                                     logger.debug("Converting ${it.name} from magnet to torrent")
@@ -99,7 +99,7 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
                                     }
                                 }
                             }
-                        })
+                        }
             }.let { logger.debug("Processed total $total torrents in $it ms") }
             lastCheck = ZonedDateTime.now().apply {
                 plusMinutes(scanInterval).let {
@@ -123,3 +123,5 @@ class Aggregator(val scanInterval: Long, val stateFile: Path? = null, val output
         }
     }
 }
+
+
