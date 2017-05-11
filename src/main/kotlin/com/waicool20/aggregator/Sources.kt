@@ -62,7 +62,7 @@ open class RssTorrentSource(val url: URL) : TorrentSource {
 
 class HorribleSubsRss : RssTorrentSource(URL("http://horriblesubs.info/rss.php?res=all"))
 class GJMRss : RssTorrentSource(URL("https://www.goodjobmedia.com/temp-rss.php"))
-class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?filter_mode=1&lang_id=1&group_id=0"))
+class AniDexRss : RssTorrentSource(URL("https://anidex.info/rss/?cat=1&lang_id=1"))
 class TokyoToshoRss : RssTorrentSource(URL("https://www.tokyotosho.info/rss.php?filter=1"))
 class AcgnxRss : RssTorrentSource(URL("https://www.acgnx.se/rss-sort-2.xml")) {
     override val torrents: List<Torrent>
